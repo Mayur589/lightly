@@ -10,8 +10,7 @@ import (
 )
 
 func main() {
-	// connect database
-
+	//connect database
 	pool, err := database.Connect()
 	if err != nil {
 		log.Fatalf("Database connection failed: %v", err)

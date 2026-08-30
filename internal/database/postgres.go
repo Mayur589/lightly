@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
+	"lightly/internal/repository"
 	"log"
 	"os"
 	"time"
@@ -41,6 +42,8 @@ func Connect() (*pgxpool.Pool, error) {
 		pool.Close()
 		return nil, fmt.Errorf("unable to ping database: %w", err)
 	}
+
+	CreateTable(ctx, pool)
 
 	return pool, nil
 

@@ -1,4 +1,4 @@
-package repository
+package database
 
 import (
 	"context"
@@ -26,7 +26,3 @@ func CreateTable(ctx context.Context, pool *pgxpool.Pool) error {
 
 	return nil
 }
-
-// func AddOriginalURL(pool *pgxpool.Pool) error {
-// 	pass
-// }
