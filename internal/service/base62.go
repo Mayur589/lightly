@@ -5,13 +5,17 @@ import (
 	"math/big"
 )
 
-const alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+const (
+	alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	n        = 6
+)
 
 func GenerateShortCode() (string, error) {
-	code := make([]byte, 6)
+	code := make([]byte, n)
+	max := big.NewInt(int64(len(alphabet)))
 
 	for i := range code {
-		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(alphabet))))
+		n, err := rand.Int(rand.Reader, max)
 		if err != nil {
 			return "", err
 		}

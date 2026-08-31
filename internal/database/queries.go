@@ -25,3 +25,16 @@ func IsShortCodeInDB(code string, ctx context.Context, pool *pgxpool.Pool) (bool
 
 	return exists, nil
 }
+
+func AddURL(original_url string, short_code string, ctx context.Context, pool *pgxpool.Pool) error {
+	query := `
+		INSERT INTO urls (short_code, original_url)
+		VALUES ($1, $2);
+	`
+
+	_, err := pool.Exec(ctx, query, short_code, original_url)
+	if err != nil {
+		return err
+	}
+	return nil
+}

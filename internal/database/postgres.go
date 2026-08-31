@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"fmt"
-	"lightly/internal/repository"
 	"log"
 	"os"
 	"time"

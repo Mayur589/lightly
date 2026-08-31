@@ -4,7 +4,7 @@ import (
 	"net/http"
 )
 
-func HandleRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("POST /shorten", ShortenHandler)
+func HandleRoutes(mux *http.ServeMux, h *Handler) {
+	mux.HandleFunc("POST /shorten", h.ShortenHandler)
 	mux.HandleFunc("GET /{code}", RedirectHandler)
 }

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"lightly/internal/database"
 	"lightly/internal/handler"
 
@@ -17,10 +16,13 @@ func main() {
 	}
 	defer pool.Close()
 
-	fmt.Println("Successfully connected to PostgreSQL!")
+	log.Println("Successfully connected to PostgreSQL!")
 
 	mux := http.NewServeMux()
-	handler.HandleRoutes(mux)
+	h := &handler.Handler{
+		DB: pool,
+	}
+	handler.HandleRoutes(mux, h)
 	log.Println("Server starting on port 8000...")
 	server_err := http.ListenAndServe(":8000", mux)
 	if server_err != nil {

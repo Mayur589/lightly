@@ -11,7 +11,11 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func ShortenHandler(w http.ResponseWriter, r *http.Request, pool *pgxpool.Pool) {
+type Handler struct {
+	DB *pgxpool.Pool
+}
+
+func (h *Handler) ShortenHandler(w http.ResponseWriter, r *http.Request) {
 	var req model.ShortenRequest
 
 	err := json.NewDecoder(r.Body).Decode(&req)
@@ -34,14 +38,14 @@ func ShortenHandler(w http.ResponseWriter, r *http.Request, pool *pgxpool.Pool) 
 	ctx := r.Context()
 
 	for {
-		code, err := service.GenerateShortCode()
+		code, err = service.GenerateShortCode()
 		if err != nil {
 			log.Println("Error: ", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
 
-		exits, err := database.IsShortCodeInDB(code, ctx, pool)
+		exits, err := database.IsShortCodeInDB(code, ctx, h.DB)
 		if err != nil {
 			log.Println("Error: ", err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -53,9 +57,24 @@ func ShortenHandler(w http.ResponseWriter, r *http.Request, pool *pgxpool.Pool) 
 		}
 
 	}
+	log.Println("Short Code: ", code)
 
 	// Add the url and short code in the database
-	log.Println("Short Code: ", code)
-	// return the shortcode
+	err = database.AddURL(parsed_url.String(), code, ctx, h.DB)
+	if err != nil {
+		log.Println("Error:", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 
+	// return the shortcode
+	response := model.ShortenResponse{
+		Success:  true,
+		ShortURL: "http://localhost:8000/" + code,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusBadRequest)
+
+	json.NewEncoder(w).Encode(response)
 }
