@@ -2,7 +2,6 @@ package handler
 
 import (
 	"encoding/json"
-	"lightly/internal/database"
 	"lightly/internal/model"
 	"lightly/internal/service"
 	"log"
@@ -34,37 +33,11 @@ func (h *Handler) ShortenHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("URL: ", parsed_url)
 
 	// Generate a short code till it is unique
-	var code string
 	ctx := r.Context()
 
-	for {
-		code, err = service.GenerateShortCode()
-		if err != nil {
-			log.Println("Error: ", err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-
-		exits, err := database.IsShortCodeInDB(code, ctx, h.DB)
-		if err != nil {
-			log.Println("Error: ", err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
-		}
-
-		if !exits {
-			break
-		}
-
-	}
-	log.Println("Short Code: ", code)
-
-	// Add the url and short code in the database
-	err = database.AddURL(parsed_url.String(), code, ctx, h.DB)
+	code, err := service.ShortenService(url, ctx, h.DB)
 	if err != nil {
-		log.Println("Error:", err)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
+		http.Error(w, "Internal Server Errror", http.StatusInternalServerError)
 	}
 
 	// return the shortcode

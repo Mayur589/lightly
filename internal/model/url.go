@@ -9,3 +9,9 @@ type ShortenResponse struct {
 	ShortURL string `json:"shortURL"`
 	Error    string `json:"error"`
 }
+
+type RedirectResponse struct {
+	Success    bool   `json:"success"`
+	OrginalURL string ` json:"originalURL"`
+	Error      string `json:"error"`
+}
