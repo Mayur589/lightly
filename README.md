@@ -1,17 +1,45 @@
-# Lightly ⚡
+# Lightly
 
-**Lightly** is a high-performance, full-stack link shortener built with **Go** and **React + TypeScript**. It features sub-millisecond redirection, live click analytics, instant QR code generation, and first-class support for custom short domains like `light.ly`.
+A full-stack, high-performance link shortener built with **Go**, **PostgreSQL**, and **React + TypeScript**, designed around the tangible metaphor of a **claim ticket**.
+
+Pasting a long URL issues a claim ticket: a short code you can hand off, with a torn stub that stays behind as your record. Recent links form your ticket spool, and click analytics act as a punch record stamped each time a ticket is redeemed.
+
+---
+
+## The Claim Ticket Concept
+
+```
+┌──────────────────────────────────────────────┐
+│  paste a link                                │
+│  ┌────────────────────────────────────────┐  │
+│  │ https://github.com/mayur/pipelineguard │  │
+│  └────────────────────────────────────────┘  │
+│                               [ Cut ticket ] │
+│ ┄┄┄┄┄┄┄┄┄┄┄┄┄┄ tear line ┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄ │
+│  light.ly/x7Qz9k                             │
+│  → github.com/mayur/pipelineguard            │
+└──────────────────────────────────────────────┘
+```
+
+- **The Ticket Unit**: A physical ticket layout separated by a perforated tear line with border notches.
+- **Stamp Animation**: A mechanical stamp-down motion when a claim stub is issued.
+- **Ticket Spool**: Left-aligned spool of recent stubs with relative age (`put 4h ago`) and scanable mono click counts.
+- **Punch Record**: Visual redemption history with mono punch histograms (`▁▂▃▅▇▆▄▂▁`).
+- **Typography Split**:
+  - `IBM Plex Mono` — Data only (short codes, timestamps, click counts, sparklines).
+  - `IBM Plex Sans` — Human language (labels, buttons, empty states, system text).
 
 ---
 
 ## Features
 
-- ⚡ **Ultra-Fast Redirection**: Powered by Go `net/http` and PostgreSQL connection pooling.
-- 📊 **Real-time Click Analytics**: Automatically tracks total visits, creation dates, and last access timestamps.
-- 📱 **QR Code Generator**: 1-click QR code view and high-res PNG download for every shortened link.
-- 🌐 **Custom Domain Ready**: Configurable `BASE_URL` allows running on custom branded domains (e.g., `https://light.ly`).
-- 🔓 **Native CORS Enabled**: Frontend talks directly to the backend without fragile dev server proxies.
-- 🐳 **Production Docker Setup**: Single-command `docker-compose` spins up PostgreSQL, Backend API, and Frontend.
+- ⚡ **Sub-Millisecond Redirection**: Powered by Go `net/http` standard library router and PostgreSQL connection pooling (`pgxpool`).
+- 🏷️ **Cryptographic Base62 Engine**: 6-character collision-resistant short codes generated via `crypto/rand`.
+- 📊 **Real-Time Punch Analytics**: Automatically tracks total visits, creation dates, and last redemption timestamps.
+- 📱 **Monochrome QR Tickets**: Instant QR code generation on `<canvas>` with one-click PNG download.
+- 🌐 **Custom Domain Ready**: Reads `BASE_URL` from the environment with dynamic fallback to incoming request host headers.
+- 🔓 **Native CORS Middleware**: Frontend talks directly to the Go backend with zero dev server proxies required.
+- 🐳 **Containerized Stack**: Multi-stage lightweight Dockerfiles for both backend and frontend.
 
 ---
 
@@ -20,88 +48,69 @@
 ```text
 lightly/
 ├── backend/                  # Go HTTP API
-│   ├── cmd/server/main.go    # Entrypoint (dynamic PORT, CORS, graceful shutdown)
+│   ├── cmd/server/main.go    # Server entrypoint (PORT, CORS, graceful shutdown)
 │   ├── internal/
-│   │   ├── database/         # PostgreSQL connection pool, migrations & queries
-│   │   ├── handler/          # Shorten, Redirect, Analytics, Health & CORS handlers
-│   │   ├── model/            # Request & response data models
+│   │   ├── database/         # Postgres pool, table migrations & click queries
+│   │   ├── handler/          # Shorten, Redirect, Analytics, Health & CORS
+│   │   ├── model/            # Request & response data transfer models
 │   │   └── service/          # Base62 encoder & URL validator
-│   ├── Dockerfile            # Multi-stage lightweight Go container
+│   ├── Dockerfile            # Minimal Alpine Go binary container (~15MB)
+│   ├── fly.toml              # Fly.io deployment configuration
 │   ├── go.mod & go.sum
 │   └── .env.example
 ├── frontend/                 # React + TypeScript + Vite SPA
 │   ├── src/
-│   │   ├── components/       # Navbar, ShortenerForm, ResultCard, RecentLinks, QRModal
+│   │   ├── components/       # TicketUnit, TicketSpool, PunchRecord, PaperQRModal
 │   │   ├── services/api.ts   # Direct CORS API client
-│   │   ├── styles/ & App.css # Vanilla CSS design system (dark mode, glassmorphism)
-│   │   ├── App.tsx
+│   │   ├── App.tsx & App.css # Claim ticket layout & stamp animation
+│   │   ├── index.css         # Claim ticket design tokens & typography
 │   │   └── main.tsx
-│   ├── Dockerfile            # Nginx static asset container
-│   ├── nginx.conf
+│   ├── Dockerfile            # Multi-stage Nginx container
+│   ├── nginx.conf            # SPA routing configuration
 │   └── package.json
-├── docker-compose.yml        # Multi-container orchestration (DB + API + Web)
-├── Makefile                  # Simple project workflow automation
+├── docker-compose.yml        # PostgreSQL + Go Backend + Nginx Frontend
+├── Makefile                  # Workflow automation
 ├── .env.example              # Root environment template
 └── README.md
 ```
 
 ---
 
-## Quick Start with Make
+## Running the Project
 
-The root `Makefile` includes shortcuts for common tasks:
+### Using Make
 
-| Command | Action |
-|---------|--------|
-| `make install` | Install Go modules and NPM dependencies |
-| `make dev` | Run backend (`:8000`) and frontend (`:5173`) concurrently |
-| `make dev-backend` | Run only the Go backend |
-| `make dev-frontend` | Run only the Vite React frontend |
-| `make up` | Start the full stack with Docker Compose |
-| `make down` | Stop all Docker Compose containers |
-| `make test` | Run backend unit tests |
-| `make build` | Build backend binary and frontend production bundle |
-| `make help` | View all available make commands |
+The root `Makefile` includes shortcuts for all common development and testing tasks:
 
----
-
-## Quick Start (Manual Setup)
-
-### Prerequisites
-- **Go** 1.22+
-- **Node.js** 18+ and **npm**
-- **PostgreSQL** (running locally or via Docker)
-
-### 1. Start PostgreSQL
-If you have Docker installed, spin up a local PostgreSQL database with one command:
 ```bash
+# First-time setup (installs Go modules and NPM dependencies)
+make install
+
+# Start a local PostgreSQL container on port 5432
 make db
-# Or manually:
-# docker run -d --name lightly-db -e POSTGRES_PASSWORD=postgrespassword -e POSTGRES_DB=lightly -p 5432:5432 postgres:16-alpine
+
+# Run both backend (:8000) and frontend (:5173) concurrently
+make dev
 ```
 
-### 2. Start the Go Backend
-```bash
-cd backend
-cp .env.example .env
-go run cmd/server/main.go
-```
-The backend starts on `http://localhost:8000`.
-
-### 3. Start the Frontend
-In a separate terminal:
-```bash
-cd frontend
-npm install
-npm run dev
-```
-Open `http://localhost:5173` in your browser. CORS is enabled on the backend, so the frontend communicates with the Go API directly.
+| Target | Description |
+|---|---|
+| `make dev` | Run backend and frontend concurrently |
+| `make dev-backend` | Run only the Go API server |
+| `make dev-frontend` | Run only the Vite React dev server |
+| `make db` | Start a standalone PostgreSQL container on port 5432 |
+| `make test` | Run backend unit tests (`go test -v ./...`) |
+| `make build` | Compile Go binary and build frontend production bundle |
+| `make up` | Start the full multi-container stack with Docker Compose |
+| `make down` | Stop all Docker Compose containers |
+| `make clean` | Remove compiled binaries and build artifacts |
+| `make help` | Show all available commands |
 
 ---
 
-## Running with Docker Compose
+### Using Docker Compose
 
-To run the full stack (PostgreSQL + Go Backend + Nginx Frontend) with a single command:
+To spin up the entire stack (PostgreSQL, Go backend, and Nginx frontend) in isolated containers:
 
 ```bash
 docker compose up --build
@@ -111,72 +120,16 @@ docker compose up --build
 - **Backend API**: `http://localhost:8000`
 - **PostgreSQL**: `localhost:5432`
 
-To shut down:
-```bash
-docker compose down
-```
-
 ---
 
-## How to Host with a Custom Domain (e.g., `light.ly`)
+## Environment Variables
 
-If you want your short links to look like `https://light.ly/xyz123`:
-
-### Step 1: Register Your Short Domain
-1. Purchase your short domain (e.g., `light.ly`, `go.yourdomain.com`, `sho.rt`) from a domain registrar like **Porkbun**, **Namecheap**, or **Cloudflare Registrar**.
-
-### Step 2: Point DNS Records to Your Host
-Depending on where you deploy:
-- **Cloud VPS / DigitalOcean**: Add an `A` record pointing `@` to your server's public IP address.
-- **Render / Fly.io / Railway**: Add a `CNAME` record pointing `@` (or subdomain) to your platform's assigned domain (e.g., `lightly.fly.dev` or `lightly.onrender.com`).
-
-### Step 3: Configure `BASE_URL`
-Set the environment variable on your backend host:
-```env
-BASE_URL=https://light.ly
-```
-Every shortened link generated by the API will now use `https://light.ly/<code`>.
-
-### Step 4: Automatic SSL / TLS
-- **Cloudflare**: Set SSL mode to "Full" or "Strict". Cloudflare handles HTTPS certificates automatically for free.
-- **Render / Fly.io**: Automatically provisions free Let's Encrypt certificates when you add your custom domain in the dashboard settings.
-
----
-
-## Deployment Options
-
-### Option A: Render (Easiest Cloud Setup)
-1. Push your repository to GitHub.
-2. In Render dashboard:
-   - Create a **PostgreSQL Database**.
-   - Create a **Web Service** pointing to the `backend/` directory using the Docker environment. Add `DATABASE_URL` and `BASE_URL=https://light.ly`.
-   - Create a **Static Site** pointing to `frontend/` (Build command: `npm run build`, Publish directory: `dist`). Add environment variable `VITE_API_URL=https://<your-backend-render-url>`.
-
-### Option B: Fly.io
-Deploy the backend with Fly CLI:
-```bash
-cd backend
-fly launch
-fly secrets set DATABASE_URL="postgresql://..." BASE_URL="https://light.ly"
-fly deploy
-```
-
-### Option C: Single VPS (Ubuntu / Debian + Docker Compose)
-1. SSH into your server:
-   ```bash
-   git clone <repo-url> lightly && cd lightly
-   ```
-2. Edit `docker-compose.yml` or set environment variables:
-   ```bash
-   export BASE_URL="https://light.ly"
-   docker compose up -d --build
-   ```
-3. Use Caddy or Nginx reverse proxy with automated SSL:
-   ```caddyfile
-   light.ly {
-       reverse_proxy localhost:8000
-   }
-   ```
+| Variable | Target | Description | Example |
+|---|---|---|---|
+| `DATABASE_URL` | Backend | PostgreSQL connection string | `postgresql://postgres:pass@localhost:5432/lightly?sslmode=disable` |
+| `BASE_URL` | Backend | Public domain prefix for shortened links | `http://localhost:8000` or `https://light.ly` |
+| `PORT` | Backend | Port Go HTTP server listens on | `8000` |
+| `VITE_API_URL` | Frontend | Target URL for frontend API calls | `http://localhost:8000` |
 
 ---
 
@@ -186,7 +139,6 @@ fly deploy
 ```http
 GET /health
 ```
-Response:
 ```json
 {
   "status": "healthy",
@@ -194,7 +146,7 @@ Response:
 }
 ```
 
-### 2. Shorten URL
+### 2. Cut a Ticket (Shorten URL)
 ```http
 POST /api/shorten
 Content-Type: application/json
@@ -212,37 +164,37 @@ Response (`201 Created`):
 }
 ```
 
-### 3. Redirect to Original URL
+### 3. Redeem Ticket (Redirection)
 ```http
 GET /{code}
 ```
-Response:
-- `302 Found` with `Location: <originalURL>`
-- Asynchronously increments click count.
+- Status: `302 Found`
+- Header: `Location: <originalURL>`
+- Asynchronously increments click count in PostgreSQL.
 
-### 4. Link Click Statistics
+### 4. Ticket Punch Record (Analytics)
 ```http
 GET /api/stats/{code}
 ```
-Response:
+Response (`200 OK`):
 ```json
 {
   "success": true,
   "data": {
     "shortCode": "7aB9kX",
     "originalURL": "https://github.com/golang/go",
-    "clicks": 14,
+    "clicks": 42,
     "createdAt": "2026-09-13T00:15:00Z",
-    "lastAccessedAt": "2026-09-13T00:20:00Z"
+    "lastAccessedAt": "2026-09-13T00:40:00Z"
   }
 }
 ```
 
-### 5. Recent Links
+### 5. Ticket Spool (Recent)
 ```http
-GET /api/recent?limit=10
+GET /api/recent?limit=15
 ```
-Response:
+Response (`200 OK`):
 ```json
 {
   "success": true,
@@ -254,8 +206,7 @@ Response:
 
 ## Testing
 
-Run unit tests for URL validation and base62 generation:
+Run unit tests for URL validation and Base62 shortcode generation:
 ```bash
-cd backend
-go test -v ./...
+make test
 ```
