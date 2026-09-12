@@ -1,167 +1,145 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import './App.css';
-import { Navbar } from './components/Navbar';
-import { ShortenerForm } from './components/ShortenerForm';
-import { ResultCard } from './components/ResultCard';
-import { RecentLinks } from './components/RecentLinks';
-import { QRModal } from './components/QRModal';
+import { TicketUnit } from './components/TicketUnit';
+import { TicketSpool } from './components/TicketSpool';
+import { PunchRecord } from './components/PunchRecord';
+import { PaperQRModal } from './components/PaperQRModal';
 import { api, API_BASE_URL, type URLStats } from './services/api';
-import { Zap, Globe, BarChart3 } from 'lucide-react';
-
-interface ActiveQR {
-  url: string;
-  code: string;
-}
 
 export const App: React.FC = () => {
   const [isBackendHealthy, setIsBackendHealthy] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
-  const [latestResult, setLatestResult] = useState<{
+  const [issuedTicket, setIssuedTicket] = useState<{
     shortURL: string;
     originalURL: string;
     shortCode: string;
   } | null>(null);
-  const [recentLinks, setRecentLinks] = useState<URLStats[]>([]);
-  const [activeQR, setActiveQR] = useState<ActiveQR | null>(null);
+  const [tickets, setTickets] = useState<URLStats[]>([]);
+  const [selectedTicketCode, setSelectedTicketCode] = useState<string | null>(null);
+  const [activeQR, setActiveQR] = useState<{ url: string; code: string } | null>(null);
 
-  // Health check
-  const checkServerHealth = useCallback(async () => {
-    const healthy = await api.checkHealth();
-    setIsBackendHealthy(healthy);
+  // Check API health
+  const checkHealth = useCallback(async () => {
+    const ok = await api.checkHealth();
+    setIsBackendHealthy(ok);
   }, []);
 
-  // Fetch recent links
-  const loadRecentLinks = useCallback(async () => {
+  // Fetch ticket spool
+  const loadTickets = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      const data = await api.getRecent(12);
-      setRecentLinks(data);
+      const data = await api.getRecent(15);
+      setTickets(data);
     } catch (err) {
-      console.warn('Could not load recent links from backend:', err);
+      console.warn('Could not load tickets:', err);
     } finally {
       setIsRefreshing(false);
     }
   }, []);
 
   useEffect(() => {
-    checkServerHealth();
-    loadRecentLinks();
-
-    // Check health every 30s
-    const interval = setInterval(checkServerHealth, 30000);
+    checkHealth();
+    loadTickets();
+    const interval = setInterval(checkHealth, 25000);
     return () => clearInterval(interval);
-  }, [checkServerHealth, loadRecentLinks]);
+  }, [checkHealth, loadTickets]);
 
-  // Handle URL Shorten
-  const handleShorten = async (targetURL: string) => {
+  // Handle cutting a new ticket
+  const handleCutTicket = async (targetURL: string) => {
     setIsLoading(true);
     try {
-      const response = await api.shorten(targetURL);
-      if (response.success && response.shortURL && response.shortCode) {
-        setLatestResult({
-          shortURL: response.shortURL,
+      const res = await api.shorten(targetURL);
+      if (res.success && res.shortURL && res.shortCode) {
+        const newTicket = {
+          shortURL: res.shortURL,
           originalURL: targetURL,
-          shortCode: response.shortCode,
-        });
-
-        // Add to recent links or refresh
-        await loadRecentLinks();
+          shortCode: res.shortCode,
+        };
+        setIssuedTicket(newTicket);
+        setSelectedTicketCode(res.shortCode);
+        await loadTickets();
       }
     } finally {
       setIsLoading(false);
     }
   };
 
+  const selectedTicket = tickets.find((t) => t.shortCode === selectedTicketCode) || null;
+
   return (
-    <div className="app-container">
-      <Navbar isBackendHealthy={isBackendHealthy} />
-
-      <main className="main-content">
-        {/* Hero */}
-        <section className="hero">
-          <div className="hero-pill">
-            <Zap size={14} />
-            <span>High-Performance Base62 Engine</span>
+    <div className="page-container">
+      <div className="ticket-column">
+        {/* System Header */}
+        <header className="system-header">
+          <div className="system-title">
+            <span>lightly</span>
+            <span className="system-sub mono">v1.0 &middot; claim ticket system</span>
           </div>
-          <h1 className="hero-title">
-            Make every link <span className="gradient-text">short & trackable</span>
-          </h1>
-          <p className="hero-subtitle">
-            Transform lengthy, cluttered URLs into clean, memorable links with instant redirection,
-            real-time click analytics, and custom domain readiness.
-          </p>
-        </section>
 
-        {/* Shortener Box */}
-        <ShortenerForm onShorten={handleShorten} isLoading={isLoading} />
+          <div className="system-status">
+            <span
+              className={`status-pip ${
+                isBackendHealthy === true
+                  ? 'online'
+                  : isBackendHealthy === false
+                  ? 'offline'
+                  : ''
+              }`}
+            />
+            <span className="mono">
+              {isBackendHealthy === true
+                ? 'api ready'
+                : isBackendHealthy === false
+                ? 'api offline'
+                : 'connecting'}
+            </span>
+          </div>
+        </header>
 
-        {/* Result Card */}
-        {latestResult && (
-          <ResultCard
-            shortURL={latestResult.shortURL}
-            originalURL={latestResult.originalURL}
-            shortCode={latestResult.shortCode}
-            onShowQR={() => setActiveQR({ url: latestResult.shortURL, code: latestResult.shortCode })}
+        {/* The Claim Ticket */}
+        <main>
+          <TicketUnit
+            onCutTicket={handleCutTicket}
+            isLoading={isLoading}
+            issuedTicket={issuedTicket}
+            onOpenQR={(url, code) => setActiveQR({ url, code })}
           />
-        )}
 
-        {/* Recent Links & Analytics */}
-        <RecentLinks
-          links={recentLinks}
-          baseURL={API_BASE_URL}
-          onRefresh={loadRecentLinks}
-          isRefreshing={isRefreshing}
-          onSelectQR={(url, code) => setActiveQR({ url, code })}
-        />
+          {/* Selected Punch Record (Analytics) */}
+          {selectedTicket && (
+            <PunchRecord
+              stats={selectedTicket}
+              onClose={() => setSelectedTicketCode(null)}
+              baseURL={API_BASE_URL}
+            />
+          )}
 
-        {/* Feature Grid */}
-        <section className="features-grid">
-          <div className="feature-card glass-panel">
-            <div className="feature-icon-wrapper icon-purple">
-              <Zap size={22} />
-            </div>
-            <h3>Sub-millisecond Speed</h3>
-            <p>
-              Powered by a compiled Go core and PostgreSQL connection pooling for blazing-fast 302 redirects.
-            </p>
-          </div>
+          {/* Ticket Stub Spool (Recent) */}
+          <TicketSpool
+            tickets={tickets}
+            selectedCode={selectedTicketCode}
+            onSelectTicket={(code) => setSelectedTicketCode(code === selectedTicketCode ? null : code)}
+            onRefresh={loadTickets}
+            isRefreshing={isRefreshing}
+          />
+        </main>
 
-          <div className="feature-card glass-panel">
-            <div className="feature-icon-wrapper icon-blue">
-              <Globe size={22} />
-            </div>
-            <h3>Custom Domain Ready</h3>
-            <p>
-              Easily point branded short domains like <code>light.ly</code> or <code>go.yourdomain.com</code> via DNS.
-            </p>
-          </div>
-
-          <div className="feature-card glass-panel">
-            <div className="feature-icon-wrapper icon-emerald">
-              <BarChart3 size={22} />
-            </div>
-            <h3>Real-time Analytics</h3>
-            <p>
-              Every redirect tracks total hits, timestamps, and activity so you never lose visibility.
-            </p>
-          </div>
-        </section>
-      </main>
+        {/* System Footer */}
+        <footer className="system-footer">
+          <span>go/postgres core &middot; base62 claims</span>
+          <span>lightly claim ticket</span>
+        </footer>
+      </div>
 
       {/* QR Code Modal */}
       {activeQR && (
-        <QRModal
+        <PaperQRModal
           url={activeQR.url}
           shortCode={activeQR.code}
           onClose={() => setActiveQR(null)}
         />
       )}
-
-      {/* Footer */}
-      <footer className="footer">
-        <p>Lightly &copy; {new Date().getFullYear()} &mdash; Production Ready Full-Stack Link Shortener</p>
-      </footer>
     </div>
   );
 };

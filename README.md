@@ -40,13 +40,32 @@ lightly/
 │   ├── nginx.conf
 │   └── package.json
 ├── docker-compose.yml        # Multi-container orchestration (DB + API + Web)
+├── Makefile                  # Simple project workflow automation
 ├── .env.example              # Root environment template
 └── README.md
 ```
 
 ---
 
-## Quick Start (Local Development)
+## Quick Start with Make
+
+The root `Makefile` includes shortcuts for common tasks:
+
+| Command | Action |
+|---------|--------|
+| `make install` | Install Go modules and NPM dependencies |
+| `make dev` | Run backend (`:8000`) and frontend (`:5173`) concurrently |
+| `make dev-backend` | Run only the Go backend |
+| `make dev-frontend` | Run only the Vite React frontend |
+| `make up` | Start the full stack with Docker Compose |
+| `make down` | Stop all Docker Compose containers |
+| `make test` | Run backend unit tests |
+| `make build` | Build backend binary and frontend production bundle |
+| `make help` | View all available make commands |
+
+---
+
+## Quick Start (Manual Setup)
 
 ### Prerequisites
 - **Go** 1.22+
@@ -56,14 +75,15 @@ lightly/
 ### 1. Start PostgreSQL
 If you have Docker installed, spin up a local PostgreSQL database with one command:
 ```bash
-docker run -d --name lightly-db -e POSTGRES_PASSWORD=postgrespassword -e POSTGRES_DB=lightly -p 5432:5432 postgres:16-alpine
+make db
+# Or manually:
+# docker run -d --name lightly-db -e POSTGRES_PASSWORD=postgrespassword -e POSTGRES_DB=lightly -p 5432:5432 postgres:16-alpine
 ```
 
 ### 2. Start the Go Backend
 ```bash
 cd backend
 cp .env.example .env
-# Update DATABASE_URL in .env if needed
 go run cmd/server/main.go
 ```
 The backend starts on `http://localhost:8000`.
