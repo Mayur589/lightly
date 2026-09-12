@@ -1,1 +1,23 @@
+# Environment variables
 .env
+*.env
+backend/.env
+frontend/.env
+frontend/.env.local
+
+# Build artifacts
+dist/
+frontend/dist/
+lightly
+backend/lightly
+
+# Dependencies
+node_modules/
+frontend/node_modules/
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

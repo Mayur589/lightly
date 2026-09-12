@@ -6,6 +6,8 @@ import (
 	"lightly/internal/service"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -19,35 +21,69 @@ func (h *Handler) ShortenHandler(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(model.ShortenResponse{
+			Success: false,
+			Error:   "Invalid JSON payload",
+		})
 		return
 	}
 
-	url := req.URL
+	url := strings.TrimSpace(req.URL)
+	if url == "" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(model.ShortenResponse{
+			Success: false,
+			Error:   "URL cannot be empty",
+		})
+		return
+	}
 
-	parsed_url, err := service.IsValidURL(url)
+	parsedURL, err := service.IsValidURL(url)
 	if err != nil {
-		http.Error(w, "Invalid URL", http.StatusBadRequest)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(model.ShortenResponse{
+			Success: false,
+			Error:   "Invalid URL format: " + err.Error(),
+		})
 		return
 	}
-	log.Println("URL: ", parsed_url)
+	log.Println("Parsed URL:", parsedURL)
 
-	// Generate a short code till it is unique
 	ctx := r.Context()
-
 	code, err := service.ShortenService(url, ctx, h.DB)
 	if err != nil {
-		http.Error(w, "Internal Server Errror", http.StatusInternalServerError)
+		log.Printf("ShortenService error: %v", err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(model.ShortenResponse{
+			Success: false,
+			Error:   "Failed to generate short link",
+		})
+		return
 	}
 
-	// return the shortcode
+	// Resolve base URL: BASE_URL env var > request scheme + host > default
+	baseURL := strings.TrimSpace(os.Getenv("BASE_URL"))
+	if baseURL == "" {
+		scheme := "http"
+		if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+			scheme = "https"
+		}
+		baseURL = scheme + "://" + r.Host
+	}
+	baseURL = strings.TrimRight(baseURL, "/")
+
 	response := model.ShortenResponse{
-		Success:  true,
-		ShortURL: "http://localhost:8000/" + code,
+		Success:   true,
+		ShortCode: code,
+		ShortURL:  baseURL + "/" + code,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusBadRequest)
-
+	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(response)
 }

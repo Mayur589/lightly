@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"time"
 
@@ -16,7 +15,7 @@ func Connect() (*pgxpool.Pool, error) {
 
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
-		log.Fatal("DATABASE_URL is not set")
+		return nil, fmt.Errorf("DATABASE_URL environment variable is not set")
 	}
 
 	ctx := context.Background()
@@ -42,7 +41,10 @@ func Connect() (*pgxpool.Pool, error) {
 		return nil, fmt.Errorf("unable to ping database: %w", err)
 	}
 
-	CreateTable(ctx, pool)
+	if err := CreateTable(ctx, pool); err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("unable to initialize database tables: %w", err)
+	}
 
 	return pool, nil
 
